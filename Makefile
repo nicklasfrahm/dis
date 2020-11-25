@@ -1,6 +1,7 @@
-.PHONY: http
+.PHONY: http ws
 
 http:
-	g++ -o http c/http.c
-	chmod +x http
-	./http
+	gcc -o http.elf c/http.c && ./http.elf
+
+ws:
+	gcc -o ws.elf -lcrypto c/ws.c && ./ws.elf

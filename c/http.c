@@ -45,7 +45,7 @@ int main(void) {
   }
 
   int addr_len = sizeof(address);
-  printf("Service online: tcp://localhost:%d\n", port);
+  printf("Service online: http://nfrah16.dedyn.io:%d\n", port);
 
   while (1) {
     char buffer[1024] = {0};
@@ -63,7 +63,7 @@ int main(void) {
         "HTTP/1.1 200 OK\r\n"
         "Content-Type: application/json\r\n"
         "\r\n"
-        "{\"data\":\"Hello, Robert!\"}\r\n";
+        "{\"data\":\"Hello HTTP!\"}\r\n";
     send(new_socket, response, strlen(response), 0);
     if (shutdown(new_socket, SHUT_RDWR)) {
       perror("error shutting down socket");
