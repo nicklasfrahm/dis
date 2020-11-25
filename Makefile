@@ -1,7 +1,7 @@
 .PHONY: http ws
 
 http:
-	gcc -o http.elf c/http.c && ./http.elf
+	gcc c/http.c -o http.elf && ./http.elf
 
 ws:
-	gcc -o ws.elf -lcrypto c/ws.c && ./ws.elf
+	gcc c/ws.c -o ws.elf -lcrypto && ./ws.elf

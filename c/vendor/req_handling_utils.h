@@ -3,6 +3,6 @@
 
 void respond(int socket_h);
 
-#include "req_handling_utils.c"
+#include "./req_handling_utils.c"
 
 #endif

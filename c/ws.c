@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "vendor/req_handling_utils.h"
+#include "./vendor/req_handling_utils.h"
 
 #define PORT 5555
 
