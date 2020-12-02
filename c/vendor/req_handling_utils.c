@@ -112,8 +112,6 @@ char *base64_encode(const void *buf, size_t size) {
  */
 void respond(int socket_h) {
   int rcvd;
-  char *base64;
-  unsigned char hash[SHA_DIGEST_LENGTH];
 
   buf = (char *)malloc(65535);
   rcvd = recv(socket_h, buf, 65535, 0);
@@ -130,7 +128,7 @@ void respond(int socket_h) {
     uri = strtok(NULL, " \t");
     prot = strtok(NULL, " \t\r\n");
 
-    fprintf(stderr, "\x1b[32m + [%s] %s\x1b[0m\n", method, uri);
+    fprintf(stderr, "\x1b[32m+ [%s] %s\x1b[0m\n", method, uri);
 
     if (qs = strchr(uri, '?')) {
       *qs++ = '\0';  // split URI
@@ -140,8 +138,6 @@ void respond(int socket_h) {
 
     header_t *h = reqhdr;
     char *t, *t2;
-    char *websock_key;
-    websock_key = (char *)malloc(100);
 
     while (h < reqhdr + 16) {
       char *k, *v, *t;
@@ -152,7 +148,7 @@ void respond(int socket_h) {
       h->name = k;
       h->value = v;
       h++;
-      fprintf(stderr, "[H] %s: %s\n", k, v);
+      fprintf(stderr, "  [HDR] %s: %s\n", k, v);
       t = v + 1 + strlen(v);
       if (t[1] == '\r' && t[2] == '\n') break;
     }
@@ -162,15 +158,75 @@ void respond(int socket_h) {
     payload = t;
     payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
 
-    // Extract Sec-WebSocket-Key value from header
-    websock_key = request_header("Sec-WebSocket-Key");
+    const char *wsUri = "/websocket";
+    if (strlen(uri) == strlen(wsUri) && strcmp(uri, wsUri)) {
+      // Extract Sec-WebSocket-Key value from header
+      char *websock_key = (char *)malloc(sizeof(char) * 128);
+      websock_key = request_header("Sec-WebSocket-Key");
 
-    // Calculate the sha1 hash of the key
-    websocket_sha(websock_key, strlen(websock_key), hash);
+      // Calculate the sha1 hash of the key
+      unsigned char hash[SHA_DIGEST_LENGTH];
+      websocket_sha(websock_key, strlen(websock_key), hash);
 
-    // Convert to Base 64 encoding
-    base64 = base64_encode(hash, sizeof(hash));
+      // Convert to Base 64 encoding
+      char *base64;
+      base64 = base64_encode(hash, sizeof(hash));
 
-    // ADD YOUR CODE TO ESTABLISH THE WEBSOCKET CONNECTION HERE !!!
+      // ADD YOUR CODE TO ESTABLISH THE WEBSOCKET CONNECTION HERE !!!
+    } else {
+      FILE *fp = (FILE *)malloc(sizeof(FILE));
+      if (strstr(uri, "./") != NULL) {
+        const char *response_header =
+            "HTTP/1.1 400 Bad Request\r\n"
+            "Content-Type: text/plain\r\n\r\n"
+            "Bad Request";
+        fprintf(stderr, "\x1b[31m- [%d] %s\x1b[0m\n", 400, uri);
+      } else if (strcmp(uri, "/") == 0) {
+        fp = fopen("c/public/index.html", "r");
+      } else {
+        char *filename = (char *)malloc(sizeof(char) * 1024);
+        snprintf(filename, sizeof(char) * 1024, "c/public%s", uri);
+        fp = fopen(filename, "r");
+        free(filename);
+      }
+
+      if (fp != NULL) {
+        // Send response header.
+        char *res_header = (char *)malloc(sizeof(char) * 50);
+        const char *res_header_tpl =
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: %s\r\n\r\n";
+        const char *favicon = "/favicon.ico";
+        if (strcmp(uri, favicon) == 0) {
+          snprintf(res_header, sizeof(char) * 50, res_header_tpl,
+                   "image/x-icon");
+        } else {
+          snprintf(res_header, sizeof(char) * 50, res_header_tpl, "text/html");
+        }
+        printf(res_header);
+        send(socket_h, res_header, strlen(res_header), 0);
+
+        // Stream file.
+        char c = getc(fp);
+        while (c != EOF && c != '\0') {
+          send(socket_h, &c, 1, 0);
+          c = getc(fp);
+        }
+
+        // Close file.
+        fclose(fp);
+        fprintf(stderr, "\x1b[32m- [%d] %s\x1b[0m\n", 200, uri);
+      } else {
+        const char *response_header =
+            "HTTP/1.1 404 Not Found\r\n"
+            "Content-Type: text/plain\r\n\r\n"
+            "Not Found";
+        send(socket_h, response_header, strlen(response_header), 0);
+        fprintf(stderr, "\x1b[31m- [%d] %s\x1b[0m\n", 404, uri);
+      }
+      if (shutdown(socket_h, SHUT_RDWR)) {
+        perror("error shutting down socket");
+      }
+    }
   }
 }
